@@ -1,4 +1,4 @@
-package simpleGameServer
+package main
 
 import "fmt"
 
