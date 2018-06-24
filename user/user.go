@@ -7,3 +7,7 @@ type User struct {
 	nickname string //昵称
 	*net.Client
 }
+
+func (u *User) ID() int32 {
+	return u.id
+}
