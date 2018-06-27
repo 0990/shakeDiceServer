@@ -1,8 +1,12 @@
 package game
 
 import (
-	"github.com/0990/simpleGameServer/user"
+	"github.com/0990/shakeDiceServer/user"
 	"sync"
+	"github.com/0990/shakeDiceServer/msg"
+	"encoding/json"
+	"github.com/0990/shakeDiceServer/util"
+	"fmt"
 )
 
 var id int32 = 0
@@ -29,18 +33,44 @@ func (p *RoomManager) generateID() int32 {
 	return id
 }
 
-func (p *RoomManager) CreateRoom(userid int32) int32 {
+func (p *RoomManager) CreateRoom(user *user.User) int32 {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 	room := Room{
 		id:         p.generateID(),
-		creatorid:  userid,
+		creatorid:  user.ID(),
 		workerChan: make(chan func(), 100),
 		users:      make([]*userParam, 0),
 	}
 	go room.Run()
 	p.id2rooms[room.id] = &room
+	sendMap := make(map[string]interface{})
+	sendMap["roomID"] = room.id
+	sendMap["success"] = true
+	sendBytes, _ := json.Marshal(sendMap)
+	user.SendMsg(sendBytes)
 	return room.id
+}
+
+func(p *RoomManager)OnMessage(user *user.User,msgMap map[string]interface{}){
+	subID := util.GetInt32(msgMap,"subID")
+	switch subID {
+	case msg.CCreateRoom:
+		p.CreateRoom(user)
+	case msg.CEnterRoom:
+		roomID := util.GetInt32(msgMap,"roomID")
+		p.EnterRoom(user,roomID)
+	}
+}
+
+func(p *RoomManager)OnGameMessage(user *user.User,msgMap map[string]interface{}){
+	if room, ok := p.GetRoomByUserid(user.ID()); ok {
+		room.Post(func() {
+			room.OnGameMessage(user.ID(), msgMap)
+		})
+	}else{
+		fmt.Println("onGameMessage,not in game!",msgMap)
+	}
 }
 
 func (p *RoomManager) DestroyRoom(roomid int32) {
@@ -74,7 +104,7 @@ func (p *RoomManager) AttachUserID2RoomID(userid int32, room *Room) {
 	p.userid2rooms[userid] = room
 }
 
-func (p *RoomManager) EnterRoom(roomid int32, user *user.User) bool {
+func (p *RoomManager) EnterRoom( user *user.User,roomid int32) bool {
 	p.mutex.RLock()
 	defer p.mutex.RUnlock()
 	if room, ok := p.GetRoom(roomid); ok {
@@ -82,10 +112,6 @@ func (p *RoomManager) EnterRoom(roomid int32, user *user.User) bool {
 			room.EnterUser(user)
 		})
 		return true
-		//if success := room.EnterUser(user); success {
-		//	p.userid2rooms[user.ID()] = room
-		//	return true
-		//}
 	}
 	return false
 }

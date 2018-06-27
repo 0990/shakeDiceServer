@@ -3,8 +3,9 @@ package game
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/0990/simpleGameServer/user"
-	"time"
+	"github.com/0990/shakeDiceServer/user"
+	"github.com/0990/shakeDiceServer/util"
+	"github.com/0990/shakeDiceServer/msg"
 )
 
 const Char_Count int = 2
@@ -70,37 +71,49 @@ func (r *Room) IsReadyGameStart() bool {
 }
 
 //game message
-func (r *Room) OnGameMessage(userid int32, subID int32) {
+func (r *Room) OnGameMessage(userid int32, msgMap map[string]interface{}) {
 	userParam, ok := r.GetUser(userid)
 	if !ok {
 		return
 	}
+	subID := util.GetInt32(msgMap,"subID")
 	switch subID {
-	case 1:
+	case msg.CReady:
 		fmt.Println("user send ready")
 		//ready
 		userParam.isReady = true
-
 		//game start
 		if r.IsReadyGameStart() {
 			sendMap := make(map[string]interface{})
-			sendMap["gameStart"] = true
-			sendBytes, _ := json.Marshal(sendMap)
-			r.SendToAll(sendBytes)
-			time.Sleep(10 * time.Second)
-
-			sendMapEnd := make(map[string]interface{})
-			sendMapEnd["gameOver"] = true
-			sendBytesEnd, _ := json.Marshal(sendMapEnd)
-			r.SendToAll(sendBytesEnd)
-			r.Close()
-
+			r.SendGameMsg2All(msg.SGameStart,sendMap)
 		}
-
-	case 2:
+	case msg.CCallRoll:
 		//play card
 	default:
 
+	}
+}
+
+func(r *Room)onGameEnd(){
+	sendMap := make(map[string]interface{})
+	sendMap["winUser"] = 1
+	r.SendGameMsg2All(msg.SGameEnd,sendMap)
+	r.Close()
+}
+
+func(r *Room)SendGameMsg2All(subID int,sendMap map[string]interface{}){
+	sendMap["mainID"] = msg.MsgID_Game
+	sendMap["subID"] = subID
+	if sendBytes, err:= json.Marshal(sendMap);err!=nil{
+		r.SendToAll(sendBytes)
+	}
+}
+
+func(r *Room)SendGameMsg(subID int,sendMap map[string]interface{},user *user.User){
+	sendMap["mainID"] = msg.MsgID_Game
+	sendMap["subID"] = subID
+	if sendBytes, err:= json.Marshal(sendMap);err!=nil{
+		user.SendMsg(sendBytes)
 	}
 }
 

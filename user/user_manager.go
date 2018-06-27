@@ -1,6 +1,6 @@
 package user
 
-import "github.com/0990/simpleGameServer/net"
+import "github.com/0990/shakeDiceServer/net"
 
 var id int32 = 0
 var m *UserManager

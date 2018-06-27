@@ -1,6 +1,6 @@
 package user
 
-import "github.com/0990/simpleGameServer/net"
+import "github.com/0990/shakeDiceServer/net"
 
 type User struct {
 	id       int32  //唯一id
