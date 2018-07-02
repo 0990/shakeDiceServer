@@ -1,29 +1,33 @@
 package msg
 
 const(
-	MsgID_Invalid = iota
-	MsgID_Logon
-	MsgID_Server
-	MsgID_Game
+	MainID_Invalid = iota
+	MainID_Logon
+	MainID_Server
+	MainID_Game
 )
-
+const (
+	CLogon = iota
+	SUserInfo = 100
+)
 const(
 	CCreateRoom = iota
 	CEnterRoom
 
-	SCreateRoom = iota+100
-	SEnterRoom
+	SCreateRoom = 100
+	SEnterRoom = 101
 )
 
 const(
-	CReady = iota
+	CClientReady = iota
+	CReady
 	CCallRoll //报数
 
-	SSyncUser = iota+100
-	SReady
-	SGameStart
-	SCallRoll
-	SGameEnd
+	SSyncUser = 100
+	SReady = 101
+	SGameStart = 102
+	SCallRoll = 103
+	SGameEnd = 104
 )
 
 

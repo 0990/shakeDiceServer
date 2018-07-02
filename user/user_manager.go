@@ -27,8 +27,9 @@ func (p *UserManager) generateID() int32 {
 
 func (p *UserManager) CreateUser(client *net.Client) {
 	user := User{
-		id:     p.generateID(),
+		//id:     p.generateID(),
 		Client: client,
+		logoned:false,
 	}
 	p.id2users[user.id] = &user
 	p.client2user[client] = &user

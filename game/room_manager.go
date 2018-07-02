@@ -4,7 +4,6 @@ import (
 	"github.com/0990/shakeDiceServer/user"
 	"sync"
 	"github.com/0990/shakeDiceServer/msg"
-	"encoding/json"
 	"github.com/0990/shakeDiceServer/util"
 	"fmt"
 )
@@ -36,19 +35,13 @@ func (p *RoomManager) generateID() int32 {
 func (p *RoomManager) CreateRoom(user *user.User) int32 {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
-	room := Room{
-		id:         p.generateID(),
-		creatorid:  user.ID(),
-		workerChan: make(chan func(), 100),
-		users:      make([]*userParam, 0),
-	}
+	room:=newRoom(p.generateID(),user.ID())
 	go room.Run()
-	p.id2rooms[room.id] = &room
+	p.id2rooms[room.id] = room
 	sendMap := make(map[string]interface{})
 	sendMap["roomID"] = room.id
 	sendMap["success"] = true
-	sendBytes, _ := json.Marshal(sendMap)
-	user.SendMsg(sendBytes)
+	user.Send(msg.MainID_Server,msg.SCreateRoom,sendMap)
 	return room.id
 }
 
@@ -109,7 +102,11 @@ func (p *RoomManager) EnterRoom( user *user.User,roomid int32) bool {
 	defer p.mutex.RUnlock()
 	if room, ok := p.GetRoom(roomid); ok {
 		room.Post(func() {
-			room.EnterUser(user)
+			ok:= room.EnterUser(user)
+			sendMap := make(map[string]interface{})
+			sendMap["roomID"] = room.id
+			sendMap["success"] = ok
+			user.Send(msg.MainID_Server,msg.SEnterRoom,sendMap)
 		})
 		return true
 	}

@@ -10,6 +10,7 @@ import (
 )
 
 func main() {
+	fmt.Println(msg.SCreateRoom,msg.SEnterRoom)
 	workerChan := make(chan func(), 100)
 	go func() {
 		for workerFunc := range workerChan {
@@ -33,13 +34,19 @@ func onMessage(client *net.Client, message []byte){
 		if err := json.Unmarshal(message, &data); err != nil {
 			fmt.Println(err)
 		}
-		sendUser.SendMsg(message)
 		mainID := int32(data["mainID"].(float64))
 		switch mainID {
-		case msg.MsgID_Logon:
-		case msg.MsgID_Server:
+		case msg.MainID_Logon:
+			sendUser.Login(data);
+		case msg.MainID_Server:
+			if !sendUser.IsLogined(){
+				return
+			}
 			game.GetManager().OnMessage(sendUser,data)
-		case msg.MsgID_Game:
+		case msg.MainID_Game:
+			if !sendUser.IsLogined(){
+				return
+			}
 			game.GetManager().OnGameMessage(sendUser,data)
 		}
 	}
