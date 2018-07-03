@@ -1,7 +1,12 @@
 package main
 
-import "testing"
+import (
+	"testing"
+)
 
-func Testing_map(t *testing.T) {
-	t.Log("hello")
+func TestSlice(t *testing.T) {
+	var intArr [4]*int
+	a:=1
+	intArr[1] = &a
+	t.Log(intArr)
 }

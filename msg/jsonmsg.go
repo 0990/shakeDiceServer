@@ -22,12 +22,14 @@ const(
 	CClientReady = iota
 	CReady
 	CCallRoll //报数
+	COpen //开
 
 	SSyncUser = 100
 	SReady = 101
 	SGameStart = 102
 	SCallRoll = 103
-	SGameEnd = 104
+	SOpen = 104
+	SGameEnd = 105
 )
 
 
