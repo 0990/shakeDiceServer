@@ -36,7 +36,7 @@ var upgrader = websocket.Upgrader{
 type Client struct {
 	hub  *Hub
 	conn *websocket.Conn
-	//send chan []byte
+	send chan []byte
 	sendMap chan map[string]interface{}
 }
 
@@ -97,7 +97,7 @@ func (c *Client) writePump() {
 		//	w.Write(message)
 		//	n := len(c.send)
 		//	for i := 0; i < n; i++ {
-		//		w.Write(newline)
+		//		//w.Write(newline)
 		//		w.Write(<-c.send)
 		//	}
 		//	if err := w.Close(); err != nil {
@@ -113,18 +113,20 @@ func (c *Client) writePump() {
 				if err != nil {
 					return
 				}
-				data,ok:=json.Marshal(sendMap)
-				if ok!=nil{
-					w.Write(data)
+				data,err:=json.Marshal(sendMap)
+				if err!=nil{
+					return
 				}
+				w.Write(data)
 				n := len(c.send)
 				for i := 0; i < n; i++ {
 					//w.Write(newline)
 					//w.Write(<-c.send)
-					data,ok:=json.Marshal(<-c.sendMap)
-					if ok!=nil{
-						w.Write(data)
+					data,err:=json.Marshal(<-c.sendMap)
+					if err!=nil{
+						return
 					}
+					w.Write(data)
 				}
 				if err := w.Close(); err != nil {
 					return
@@ -148,7 +150,7 @@ func serverWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	client := &Client{
 		hub:  hub,
 		conn: conn,
-		//send: make(chan []byte, 256),
+		send: make(chan []byte, 256),
 		sendMap:make(chan map[string]interface{},10),
 	}
 	client.hub.register <- client

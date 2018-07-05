@@ -1,7 +1,6 @@
 package game
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/0990/shakeDiceServer/user"
 	"github.com/0990/shakeDiceServer/util"
@@ -119,12 +118,17 @@ func (r *Room) EnterUser(user *user.User) bool {
 	}
 	r.users[emptySeat] = userParm
 	GetManager().AttachUserID2RoomID(user.ID(), r)
+
+	r.SendGameMsg2All(msg.SSyncUser,r.GetSyncUserMsg(userParm))
 	return true
 }
 
 func (r *Room) IsReadyGameStart() bool {
 	readyCount:=0
 	for _, v := range r.users {
+		if v==nil{
+			continue
+		}
 		if v.isReady {
 			readyCount++
 		}
@@ -144,6 +148,9 @@ func (r *Room) OnGameMessage(userid int32, msgMap map[string]interface{}) {
 		user.isClientReady = true
 		var startUser []*userParam
 		for i,v:=range r.users{
+			if v==nil{
+				continue
+			}
 			if v.ID()==userid{
 				startUser=append(r.users[i:],r.users[:i]...)
 				break
@@ -151,12 +158,11 @@ func (r *Room) OnGameMessage(userid int32, msgMap map[string]interface{}) {
 		}
 
 		for _, v := range startUser{
-			sendMap := make(map[string]interface{})
-			sendMap["userID"] = v.ID()
-			sendMap["nickname"] = v.Nickname()
-			sendMap["seat"] = v.seat
-			sendMap["ready"] = v.isReady
-			v.Send(msg.MainID_Game,msg.SSyncUser,sendMap)
+			if v==nil {
+				continue
+			}
+			fmt.Println("syncUser",v.ID())
+			user.Send(msg.MainID_Game,msg.SSyncUser,r.GetSyncUserMsg(v))
 		}
 	case msg.CReady:
 		user.isReady = true
@@ -171,7 +177,7 @@ func (r *Room) OnGameMessage(userid int32, msgMap map[string]interface{}) {
 		if user.seat!= r.currOptSeat{
 			return
 		}
-		r.currOptSeat = (r.currOptSeat+1)%Char_Count
+
 		//3个5 count个diceNum
 		count := util.GetInt32(msgMap,"count")
 		diceNum:= util.GetInt32(msgMap,"diceNum")
@@ -184,6 +190,7 @@ func (r *Room) OnGameMessage(userid int32, msgMap map[string]interface{}) {
 			fmt.Println("callRoll param error")
 			return
 		}
+		r.currOptSeat = (r.currOptSeat+1)%Char_Count
 
 		if !r.callParam.init{
 			r.callParam.init  = true
@@ -239,9 +246,16 @@ func (r *Room) OnGameMessage(userid int32, msgMap map[string]interface{}) {
 func(r *Room)SendGameMsg2All(subID int,sendMap map[string]interface{}){
 	sendMap["mainID"] = msg.MainID_Game
 	sendMap["subID"] = subID
-	if sendBytes, err:= json.Marshal(sendMap);err!=nil{
-		r.SendToAll(sendBytes)
-	}
+	r.SendToAll(sendMap)
+}
+
+func(r *Room)GetSyncUserMsg(user *userParam)map[string]interface{}{
+	sendMap := make(map[string]interface{})
+	sendMap["userID"] = user.ID()
+	sendMap["nickname"] = user.Nickname()
+	sendMap["seat"] = user.seat
+	sendMap["ready"] = user.isReady
+	return sendMap
 }
 
 func(r *Room)GetSeatUser(seat int)*userParam{
@@ -265,13 +279,17 @@ func(r *Room)GetEmptySeat()(int,bool){
 func(r *Room)SendGameMsg(user *userParam,subID int,sendMap map[string]interface{}){
 	sendMap["mainID"] = msg.MainID_Game
 	sendMap["subID"] = subID
-	if sendBytes, err:= json.Marshal(sendMap);err!=nil{
-		user.SendMsg(sendBytes)
-	}
+	user.SendMsg(sendMap)
+	//if sendBytes, err:= json.Marshal(sendMap);err!=nil{
+	//	user.SendMsg(sendBytes)
+	//}
 }
 
 func (r *Room) GetUser(userid int32) (*userParam, bool) {
 	for _, v := range r.users {
+		if v==nil{
+			continue
+		}
 		fmt.Println(v.ID())
 		if v.ID() == userid {
 			fmt.Println(v.ID(), userid)
@@ -281,10 +299,13 @@ func (r *Room) GetUser(userid int32) (*userParam, bool) {
 	return nil, false
 }
 
-func (r *Room) SendToAll(message []byte) {
+func (r *Room) SendToAll(sendMap map[string]interface{}) {
 	for _, v := range r.users {
+		if v==nil{
+			continue
+		}
 		if v.isClientReady{
-			v.SendMsg(message)
+			v.SendMsg(sendMap)
 		}
 	}
 }

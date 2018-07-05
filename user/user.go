@@ -2,7 +2,6 @@ package user
 
 import (
 	"github.com/0990/shakeDiceServer/net"
-	"encoding/json"
 	"github.com/0990/shakeDiceServer/msg"
 )
 
@@ -38,8 +37,9 @@ func(u *User)Send(mainID,subID int32,sendMap map[string]interface{}){
 	}
 	sendMap["mainID"] = mainID
 	sendMap["subID"] = subID
-	sendBytes, _ := json.Marshal(sendMap)
-	u.SendMsg(sendBytes)
+	u.SendMsg(sendMap)
+	//sendBytes, _ := json.Marshal(sendMap)
+	//u.SendMsg(sendBytes)
 }
 
 func(u *User)IsLogined()bool{

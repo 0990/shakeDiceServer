@@ -18,6 +18,7 @@ const(
 	SCreateRoom      = 100
 	SEnterRoom       = 101
 	SSyncMyRoom      = 102
+	SDismissRoom     = 103
 )
 
 const(

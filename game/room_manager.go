@@ -38,13 +38,14 @@ func (p *RoomManager) CreateRoom(user *user.User)  {
 	defer p.mutex.Unlock()
 
 	//一个账号同时只有创建一个房间
-	for _,v:=range p.id2rooms{
-		if v.creatorid==user.ID(){
-			sendMap := make(map[string]interface{})
-			sendMap["success"] = false
-			user.Send(msg.MainID_Server,msg.SCreateRoom,sendMap)
-			return
-		}
+	if room,ok:=p.GetRoomByCreatorID(user.ID());ok{
+		sendMap := make(map[string]interface{})
+		sendMap["success"] = false
+		user.Send(msg.MainID_Server,msg.SCreateRoom,sendMap)
+		syncMsg := make(map[string]interface{})
+		syncMsg["roomID"] = room.id
+		user.Send(msg.MainID_Server,msg.SSyncMyRoom,syncMsg)
+		return
 	}
 
 	room:=newRoom(p.generateID(),user.ID())
@@ -52,17 +53,17 @@ func (p *RoomManager) CreateRoom(user *user.User)  {
 	p.id2rooms[room.id] = room
 	sendMap := make(map[string]interface{})
 	sendMap["success"] = true
-	sendMap["roomID"] = room.id
+	//sendMap["roomID"] = room.id
 	user.Send(msg.MainID_Server,msg.SCreateRoom,sendMap)
 
-	//syncMsg := make(map[string]interface{})
-	//syncMsg["roomID"] = room.id
-	//user.Send(msg.MainID_Server,msg.SSyncMyRoom,syncMsg)
+	syncMsg := make(map[string]interface{})
+	syncMsg["roomID"] = room.id
+	user.Send(msg.MainID_Server,msg.SSyncMyRoom,syncMsg)
 
-	room.autoDestoryTimer = time.AfterFunc(60*time.Second,func(){
-		//sendMap := make(map[string]interface{})
-		//sendMap["roomID"] = -1
-		//user.Send(msg.MainID_Server,msg.SSyncMyRoom,sendMap)
+	room.autoDestoryTimer = time.AfterFunc(600*time.Second,func(){
+		sendMap := make(map[string]interface{})
+		sendMap["roomID"] = room.id
+		user.Send(msg.MainID_Server,msg.SDismissRoom,sendMap)
 		room.Close()
 	})
 }
@@ -112,6 +113,9 @@ func (p *RoomManager) DestroyRoom(roomid int32) {
 	defer p.mutex.Unlock()
 	if room, ok := p.id2rooms[roomid]; ok {
 		for _, user := range room.users {
+			if user==nil{
+				continue
+			}
 			delete(p.userid2rooms, user.ID())
 		}
 		delete(p.id2rooms, roomid)
