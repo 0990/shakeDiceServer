@@ -23,6 +23,7 @@ type Room struct {
 	currOptSeat int
 	callParam CallParam
 	winSeat int
+	autoDestoryTimer *time.Timer
 }
 
 type CallParam struct{
@@ -80,6 +81,7 @@ func (r *Room) Close() {
 func(r *Room)enterState(e *fsm.Event){
 	switch e.Dst {
 	case "start":
+		r.autoDestoryTimer.Stop()
 		rand.Seed(time.Now().UnixNano())
 		r.currOptSeat  = rand.Intn(Char_Count)
 		for _,v:=range r.users{

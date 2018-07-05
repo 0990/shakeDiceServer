@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	fmt.Println(msg.SCreateRoom,msg.SEnterRoom)
+	fmt.Println(msg.SSyncMyRoom,msg.SEnterRoom)
 	workerChan := make(chan func(), 100)
 	go func() {
 		for workerFunc := range workerChan {
