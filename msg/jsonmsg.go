@@ -13,9 +13,11 @@ const (
 const(
 	CCreateRoom = iota
 	CEnterRoom
+	CGetMyRoom
 
-	SCreateRoom = 100
-	SEnterRoom = 101
+	SCreateRoom      = 100
+	SEnterRoom       = 101
+	SSyncMyRoom      = 102
 )
 
 const(

@@ -6,6 +6,7 @@ import (
 	"github.com/0990/shakeDiceServer/msg"
 	"github.com/0990/shakeDiceServer/util"
 	"fmt"
+	"time"
 )
 
 var id int32 = 0
@@ -32,17 +33,38 @@ func (p *RoomManager) generateID() int32 {
 	return id
 }
 
-func (p *RoomManager) CreateRoom(user *user.User) int32 {
+func (p *RoomManager) CreateRoom(user *user.User)  {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
+
+	//一个账号同时只有创建一个房间
+	for _,v:=range p.id2rooms{
+		if v.creatorid==user.ID(){
+			sendMap := make(map[string]interface{})
+			sendMap["success"] = false
+			user.Send(msg.MainID_Server,msg.SCreateRoom,sendMap)
+			return
+		}
+	}
+
 	room:=newRoom(p.generateID(),user.ID())
 	go room.Run()
 	p.id2rooms[room.id] = room
 	sendMap := make(map[string]interface{})
-	sendMap["roomID"] = room.id
 	sendMap["success"] = true
+	sendMap["roomID"] = room.id
 	user.Send(msg.MainID_Server,msg.SCreateRoom,sendMap)
-	return room.id
+
+	//syncMsg := make(map[string]interface{})
+	//syncMsg["roomID"] = room.id
+	//user.Send(msg.MainID_Server,msg.SSyncMyRoom,syncMsg)
+
+	room.autoDestoryTimer = time.AfterFunc(60*time.Second,func(){
+		//sendMap := make(map[string]interface{})
+		//sendMap["roomID"] = -1
+		//user.Send(msg.MainID_Server,msg.SSyncMyRoom,sendMap)
+		room.Close()
+	})
 }
 
 func(p *RoomManager)OnMessage(user *user.User,msgMap map[string]interface{}){
@@ -53,7 +75,26 @@ func(p *RoomManager)OnMessage(user *user.User,msgMap map[string]interface{}){
 	case msg.CEnterRoom:
 		roomID := util.GetInt32(msgMap,"roomID")
 		p.EnterRoom(user,roomID)
+	case msg.CGetMyRoom:
+		var roomID int32 =0
+		if room,ok:=p.GetRoomByCreatorID(user.ID());ok{
+			roomID = room.id
+		}else{
+			roomID = -1
+		}
+		syncMsg := make(map[string]interface{})
+		syncMsg["roomID"] = roomID
+		user.Send(msg.MainID_Server,msg.SSyncMyRoom,syncMsg)
 	}
+}
+
+func(p *RoomManager)GetRoomByCreatorID(userid int32)(*Room,bool){
+	for _,v:=range p.id2rooms{
+		if v.creatorid==userid{
+			return v,true
+		}
+	}
+	return nil,false
 }
 
 func(p *RoomManager)OnGameMessage(user *user.User,msgMap map[string]interface{}){
