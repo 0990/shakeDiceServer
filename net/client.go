@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"time"
+	"encoding/json"
 )
 
 const (
@@ -35,11 +36,16 @@ var upgrader = websocket.Upgrader{
 type Client struct {
 	hub  *Hub
 	conn *websocket.Conn
-	send chan []byte
+	//send chan []byte
+	sendMap chan map[string]interface{}
 }
 
-func (c *Client) SendMsg(message []byte) {
-	c.send <- message
+//func (c *Client) SendMsg(message []byte) {
+//	c.send <- message
+//}
+
+func(c *Client)SendMsg(sendMap map[string]interface{}){
+	c.sendMap <- sendMap
 }
 
 func (c *Client) readPump() {
@@ -78,24 +84,51 @@ func (c *Client) writePump() {
 	}()
 	for {
 		select {
-		case message, ok := <-c.send:
-			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
-			if !ok {
-				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
-				return
-			}
-			w, err := c.conn.NextWriter(websocket.TextMessage)
-			if err != nil {
-				return
-			}
-			w.Write(message)
-			n := len(c.send)
-			for i := 0; i < n; i++ {
-				w.Write(newline)
-				w.Write(<-c.send)
-			}
-			if err := w.Close(); err != nil {
-				return
+		//case message, ok := <-c.send:
+		//	c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+		//	if !ok {
+		//		c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+		//		return
+		//	}
+		//	w, err := c.conn.NextWriter(websocket.TextMessage)
+		//	if err != nil {
+		//		return
+		//	}
+		//	w.Write(message)
+		//	n := len(c.send)
+		//	for i := 0; i < n; i++ {
+		//		w.Write(newline)
+		//		w.Write(<-c.send)
+		//	}
+		//	if err := w.Close(); err != nil {
+		//		return
+		//	}
+		case sendMap,ok:=<-c.sendMap:{
+				c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+				if !ok {
+					c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+					return
+				}
+				w, err := c.conn.NextWriter(websocket.TextMessage)
+				if err != nil {
+					return
+				}
+				data,ok:=json.Marshal(sendMap)
+				if ok!=nil{
+					w.Write(data)
+				}
+				n := len(c.send)
+				for i := 0; i < n; i++ {
+					//w.Write(newline)
+					//w.Write(<-c.send)
+					data,ok:=json.Marshal(<-c.sendMap)
+					if ok!=nil{
+						w.Write(data)
+					}
+				}
+				if err := w.Close(); err != nil {
+					return
+				}
 			}
 		case <-ticker.C:
 			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
@@ -115,7 +148,8 @@ func serverWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	client := &Client{
 		hub:  hub,
 		conn: conn,
-		send: make(chan []byte, 256),
+		//send: make(chan []byte, 256),
+		sendMap:make(chan map[string]interface{},10),
 	}
 	client.hub.register <- client
 	go client.writePump()
