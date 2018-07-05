@@ -1,0 +1,12 @@
+syntax = "proto3";
+package cmsg;
+
+
+message Head{
+    int32 mainID = 1;
+    int32 subID = 2;
+}
+message ReqLogon{
+    string name = 1;
+}
+
